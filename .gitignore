@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.js.map
+*.d.ts.map
+.DS_Store
+logs/
+cache/
+outputs/
+temp/
