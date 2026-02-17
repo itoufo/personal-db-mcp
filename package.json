@@ -14,9 +14,10 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@supabase/supabase-js": "^2.49.4",
     "dotenv": "^16.4.7",
+    "mcp-handler": "^1.0.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {
