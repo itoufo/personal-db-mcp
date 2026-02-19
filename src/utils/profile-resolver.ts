@@ -62,21 +62,14 @@ function fromAuthInfo(authInfo?: AuthInfo): { profileId: string; plan: string } 
 export async function getProfileId(authInfo?: AuthInfo): Promise<string> {
   // 1. MCP SDK's authInfo (most reliable for HTTP mode)
   const fromAuth = fromAuthInfo(authInfo);
-  if (fromAuth) {
-    console.log(`[profile-resolver] resolved via authInfo: ${fromAuth.profileId}`);
-    return fromAuth.profileId;
-  }
+  if (fromAuth) return fromAuth.profileId;
 
   // 2. AsyncLocalStorage (set by withRequestAuth in api/mcp.ts)
   const reqAuth = getRequestAuth();
-  if (reqAuth) {
-    console.log(`[profile-resolver] resolved via AsyncLocalStorage: ${reqAuth.profileId}`);
-    return reqAuth.profileId;
-  }
+  if (reqAuth) return reqAuth.profileId;
 
   // 3. Env var or legacy fallback (CLI mode)
   await ensureInitialized();
-  console.log(`[profile-resolver] resolved via fallback/cache: ${cachedProfileId} (authInfo was: ${JSON.stringify(authInfo)})`);
   return cachedProfileId!;
 }
 

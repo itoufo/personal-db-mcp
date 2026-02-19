@@ -47,13 +47,6 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
     { data: createSchema },
     async ({ data }, extra) => {
       try {
-        const debugInfo = {
-          extraKeys: Object.keys(extra),
-          hasAuthInfo: !!extra.authInfo,
-          authInfoKeys: extra.authInfo ? Object.keys(extra.authInfo) : [],
-          authInfoExtra: (extra.authInfo as any)?.extra,
-          authInfoToken: extra.authInfo?.token ? "present" : "absent",
-        };
         const insertData: Record<string, unknown> = { ...data };
         if (hasProfileId) {
           insertData.profile_id = await getProfileId(extra.authInfo);
@@ -70,7 +63,7 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
         // Clear profile cache when a new profile is created
         if (table === "profiles") clearProfileCache();
 
-        return formatSuccess({ ...result, _debug: debugInfo });
+        return formatSuccess(result);
       } catch (e) {
         return formatErrorResponse(formatError(e));
       }
