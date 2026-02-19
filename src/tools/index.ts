@@ -7,6 +7,8 @@ import { registerBulkTools } from "./bulk.js";
 import { registerStatsTools } from "./stats.js";
 import { registerContextTools } from "../context/index.js";
 import { schemaRegistry } from "../schemas/index.js";
+import { getProfileId } from "../utils/profile-resolver.js";
+import { getRequestAuth } from "../auth/request-context.js";
 
 /** Entity configurations for CRUD factory */
 const entityConfigs = [
@@ -49,4 +51,26 @@ export function registerTools(server: McpServer): void {
   registerBulkTools(server);
   registerStatsTools(server);
   registerContextTools(server);
+
+  // DEBUG: auth diagnostic tool
+  server.tool(
+    "debug_auth",
+    "認証デバッグ",
+    {},
+    async (_args, extra) => {
+      const reqAuth = getRequestAuth();
+      const resolved = await getProfileId(extra.authInfo);
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            hasAuthInfo: !!extra.authInfo,
+            authInfoExtra: (extra.authInfo as any)?.extra ?? null,
+            asyncLocalStorage: reqAuth ?? null,
+            resolvedProfileId: resolved,
+          }, null, 2),
+        }],
+      };
+    }
+  );
 }
