@@ -7,6 +7,8 @@ import { registerBulkTools } from "./bulk.js";
 import { registerStatsTools } from "./stats.js";
 import { registerContextTools } from "../context/index.js";
 import { schemaRegistry } from "../schemas/index.js";
+import { getProfileId } from "../utils/profile-resolver.js";
+import { getRequestAuth } from "../auth/request-context.js";
 
 /** Entity configurations for CRUD factory */
 const entityConfigs = [
@@ -49,4 +51,36 @@ export function registerTools(server: McpServer): void {
   registerBulkTools(server);
   registerStatsTools(server);
   registerContextTools(server);
+
+  // DEBUG: Temporary tool to diagnose auth
+  server.tool(
+    "debug_auth",
+    "認証デバッグ情報を返す（一時的）",
+    {},
+    async (_args, extra) => {
+      const reqAuth = getRequestAuth();
+      const resolvedProfileId = await getProfileId(extra.authInfo);
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            extraKeys: Object.keys(extra),
+            hasAuthInfo: !!extra.authInfo,
+            authInfo: extra.authInfo ? {
+              token: extra.authInfo.token ? "present" : "absent",
+              clientId: extra.authInfo.clientId,
+              scopes: extra.authInfo.scopes,
+              extra: (extra.authInfo as any).extra,
+            } : null,
+            asyncLocalStorage: reqAuth ? { profileId: reqAuth.profileId, plan: reqAuth.plan } : null,
+            resolvedProfileId,
+            env: {
+              hasPersonalDbApiKey: !!process.env.PERSONAL_DB_API_KEY,
+              nodeEnv: process.env.NODE_ENV,
+            },
+          }, null, 2),
+        }],
+      };
+    }
+  );
 }
