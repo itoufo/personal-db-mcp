@@ -47,9 +47,13 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
     { data: createSchema },
     async ({ data }, extra) => {
       try {
-        console.log(`[crud-factory:create_${singular}] extra keys:`, Object.keys(extra));
-        console.log(`[crud-factory:create_${singular}] authInfo:`, JSON.stringify(extra.authInfo));
-        console.log(`[crud-factory:create_${singular}] authInfo?.extra:`, JSON.stringify((extra.authInfo as any)?.extra));
+        const debugInfo = {
+          extraKeys: Object.keys(extra),
+          hasAuthInfo: !!extra.authInfo,
+          authInfoKeys: extra.authInfo ? Object.keys(extra.authInfo) : [],
+          authInfoExtra: (extra.authInfo as any)?.extra,
+          authInfoToken: extra.authInfo?.token ? "present" : "absent",
+        };
         const insertData: Record<string, unknown> = { ...data };
         if (hasProfileId) {
           insertData.profile_id = await getProfileId(extra.authInfo);
@@ -66,7 +70,7 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
         // Clear profile cache when a new profile is created
         if (table === "profiles") clearProfileCache();
 
-        return formatSuccess(result);
+        return formatSuccess({ ...result, _debug: debugInfo });
       } catch (e) {
         return formatErrorResponse(formatError(e));
       }
