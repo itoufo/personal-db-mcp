@@ -45,11 +45,11 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
     `create_${singular}`,
     `${label}を新規作成`,
     { data: createSchema },
-    async ({ data }) => {
+    async ({ data }, extra) => {
       try {
         const insertData: Record<string, unknown> = { ...data };
         if (hasProfileId) {
-          insertData.profile_id = await getProfileId();
+          insertData.profile_id = await getProfileId(extra.authInfo);
         }
 
         const { data: result, error } = await getClient()
@@ -102,7 +102,7 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
       order_desc: z.boolean().optional().describe("降順ソート (デフォルト: true)"),
       filter: z.record(z.string()).optional().describe("フィルタ条件 (カラム名: 値)"),
     },
-    async ({ limit = 50, offset = 0, order_by, order_desc = true, filter }) => {
+    async ({ limit = 50, offset = 0, order_by, order_desc = true, filter }, extra) => {
       try {
         let query = getClient()
           .from(table)
@@ -112,7 +112,7 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
 
         // Auto-filter by profile_id
         if (hasProfileId) {
-          const profileId = await getProfileId();
+          const profileId = await getProfileId(extra.authInfo);
           query = query.eq("profile_id", profileId);
         }
 

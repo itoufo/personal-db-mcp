@@ -12,9 +12,9 @@ export function registerStatsTools(server: McpServer): void {
     "get_stats",
     "カテゴリ別の統計情報を取得（エントリ数、最終更新等）",
     {},
-    async () => {
+    async (_args, extra) => {
       try {
-        const profileId = await getProfileId();
+        const profileId = await getProfileId(extra.authInfo);
         const stats: Record<string, { count: number; last_updated?: string }> = {};
 
         await Promise.all(

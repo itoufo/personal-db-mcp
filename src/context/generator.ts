@@ -5,11 +5,13 @@ import type { ResolvedPersona } from "./personas.js";
 import { scoreEntries } from "./scoring.js";
 import type { ScoredEntry } from "./scoring.js";
 import { renderEntry, ENTITY_LABELS } from "./renderers.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 export interface GenerateContextOptions {
   persona?: string;
   focus?: string;
   max_tokens_hint?: number;
+  authInfo?: AuthInfo;
 }
 
 interface EntitySection {
@@ -26,10 +28,10 @@ interface EntitySection {
 export async function generateContext(
   options: GenerateContextOptions = {}
 ): Promise<string> {
-  const { persona: personaName, focus, max_tokens_hint = 4000 } = options;
+  const { persona: personaName, focus, max_tokens_hint = 4000, authInfo } = options;
 
-  const persona = await resolvePersona(personaName);
-  const profileId = await getProfileId();
+  const persona = await resolvePersona(personaName, authInfo);
+  const profileId = await getProfileId(authInfo);
 
   // Fetch profile
   const { data: profile } = await getClient()

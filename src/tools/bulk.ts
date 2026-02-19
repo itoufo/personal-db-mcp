@@ -18,9 +18,9 @@ export function registerBulkTools(server: McpServer): void {
         .record(z.array(z.record(z.unknown())))
         .describe("テーブル名をキー、エントリ配列を値とするオブジェクト"),
     },
-    async ({ data }) => {
+    async ({ data }, extra) => {
       try {
-        const profileId = await getProfileId();
+        const profileId = await getProfileId(extra.authInfo);
         const results: Record<string, { inserted: number; errors: string[] }> = {};
 
         for (const [table, entries] of Object.entries(data)) {
@@ -80,9 +80,9 @@ export function registerBulkTools(server: McpServer): void {
         .optional()
         .describe("非公開データを含めるか (デフォルト: false)"),
     },
-    async ({ tables, include_private = false }) => {
+    async ({ tables, include_private = false }, extra) => {
       try {
-        const profileId = await getProfileId();
+        const profileId = await getProfileId(extra.authInfo);
         const targetTables = tables || Object.keys(schemaRegistry);
         const result: Record<string, unknown[]> = {};
 

@@ -1,6 +1,7 @@
 import { getClient } from "../db/client.js";
 import { validateApiKey } from "../auth/api-key.js";
 import { getRequestAuth } from "../auth/request-context.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 let cachedProfileId: string | null = null;
 let cachedPlan: string | null = null;
@@ -39,18 +40,50 @@ async function ensureInitialized(): Promise<void> {
   initialized = true;
 }
 
-/** Resolve the profile ID for the current session */
-export async function getProfileId(): Promise<string> {
+/**
+ * Extract profile auth from MCP SDK's authInfo (extra parameter in tool handlers).
+ * authInfo.extra contains { profileId, plan } set by verifyToken in api/mcp.ts.
+ */
+function fromAuthInfo(authInfo?: AuthInfo): { profileId: string; plan: string } | undefined {
+  const extra = authInfo?.extra as Record<string, unknown> | undefined;
+  if (extra?.profileId && typeof extra.profileId === "string") {
+    return {
+      profileId: extra.profileId,
+      plan: (extra.plan as string) ?? "free",
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Resolve the profile ID for the current session.
+ * Priority: authInfo (MCP SDK) > AsyncLocalStorage > env var > first profile
+ */
+export async function getProfileId(authInfo?: AuthInfo): Promise<string> {
+  // 1. MCP SDK's authInfo (most reliable for HTTP mode)
+  const fromAuth = fromAuthInfo(authInfo);
+  if (fromAuth) return fromAuth.profileId;
+
+  // 2. AsyncLocalStorage (set by withRequestAuth in api/mcp.ts)
   const reqAuth = getRequestAuth();
   if (reqAuth) return reqAuth.profileId;
+
+  // 3. Env var or legacy fallback (CLI mode)
   await ensureInitialized();
   return cachedProfileId!;
 }
 
-/** Get the current user's plan */
-export async function getPlan(): Promise<string> {
+/**
+ * Get the current user's plan.
+ * Priority: authInfo (MCP SDK) > AsyncLocalStorage > env var > legacy
+ */
+export async function getPlan(authInfo?: AuthInfo): Promise<string> {
+  const fromAuth = fromAuthInfo(authInfo);
+  if (fromAuth) return fromAuth.plan;
+
   const reqAuth = getRequestAuth();
   if (reqAuth) return reqAuth.plan;
+
   await ensureInitialized();
   return cachedPlan!;
 }

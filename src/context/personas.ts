@@ -1,5 +1,6 @@
 import { getClient } from "../db/client.js";
 import { getProfileId } from "../utils/profile-resolver.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 /** Resolved persona configuration used by the context generator */
 export interface ResolvedPersona {
@@ -160,7 +161,8 @@ const PRESET_PERSONAS: Record<string, ResolvedPersona> = {
  * Checks presets first, then looks up custom personas in the database.
  */
 export async function resolvePersona(
-  name?: string
+  name?: string,
+  authInfo?: AuthInfo
 ): Promise<ResolvedPersona> {
   const personaName = name || "default";
 
@@ -170,7 +172,7 @@ export async function resolvePersona(
   }
 
   // Look up custom persona in DB
-  const profileId = await getProfileId();
+  const profileId = await getProfileId(authInfo);
   const { data, error } = await getClient()
     .from("personas")
     .select("*")
@@ -202,10 +204,10 @@ export async function resolvePersona(
 }
 
 /** List available persona names (presets + custom) */
-export async function listAvailablePersonas(): Promise<string[]> {
+export async function listAvailablePersonas(authInfo?: AuthInfo): Promise<string[]> {
   const presets = Object.keys(PRESET_PERSONAS);
   try {
-    const profileId = await getProfileId();
+    const profileId = await getProfileId(authInfo);
     const { data } = await getClient()
       .from("personas")
       .select("name")

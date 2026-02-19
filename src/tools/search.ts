@@ -49,9 +49,9 @@ export function registerSearchTools(server: McpServer): void {
         .describe("検索対象テーブル (省略時は全テーブル)"),
       limit: z.coerce.number().int().min(1).max(50).optional().describe("テーブルあたりの取得件数 (デフォルト: 10)"),
     },
-    async ({ query, tables, limit = 10 }) => {
+    async ({ query, tables, limit = 10 }, extra) => {
       try {
-        const profileId = await getProfileId();
+        const profileId = await getProfileId(extra.authInfo);
         const searchTables = tables || SEARCHABLE_TABLES;
 
         const results: Record<string, unknown[]> = {};

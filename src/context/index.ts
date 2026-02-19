@@ -25,12 +25,13 @@ export function registerContextTools(server: McpServer): void {
         .optional()
         .describe("出力目安トークン数 (デフォルト: 4000)"),
     },
-    async ({ persona, focus, max_tokens_hint }) => {
+    async ({ persona, focus, max_tokens_hint }, extra) => {
       try {
         const context = await generateContext({
           persona,
           focus,
           max_tokens_hint,
+          authInfo: extra.authInfo,
         });
         return {
           content: [{ type: "text" as const, text: context }],
@@ -45,9 +46,9 @@ export function registerContextTools(server: McpServer): void {
     "list_available_personas",
     "利用可能なペルソナ一覧を取得 (プリセット + カスタム)",
     {},
-    async () => {
+    async (_args, extra) => {
       try {
-        const personas = await listAvailablePersonas();
+        const personas = await listAvailablePersonas(extra.authInfo);
         return formatSuccess({ personas });
       } catch (e) {
         return formatErrorResponse(formatError(e));

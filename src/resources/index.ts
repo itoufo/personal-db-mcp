@@ -24,8 +24,8 @@ export function registerResources(server: McpServer): void {
     "career-timeline",
     "personaldb://career/timeline",
     { description: "時系列の職歴" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const { data } = await getClient()
         .from("career_entries")
         .select("*")
@@ -41,8 +41,8 @@ export function registerResources(server: McpServer): void {
     "skills-matrix",
     "personaldb://skills/matrix",
     { description: "カテゴリ別スキルマトリクス" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const { data } = await getClient()
         .from("skills")
         .select("*")
@@ -67,8 +67,8 @@ export function registerResources(server: McpServer): void {
     "portfolio",
     "personaldb://portfolio",
     { description: "プロジェクト＋実績ポートフォリオ" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const [projects, achievements] = await Promise.all([
         getClient()
           .from("projects")
@@ -97,8 +97,8 @@ export function registerResources(server: McpServer): void {
     "resume-data",
     "personaldb://resume/data",
     { description: "履歴書用の構造化データ" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const [profile, career, skills, education, achievements] = await Promise.all([
         getClient().from("profiles").select("*").limit(1).single(),
         getClient().from("career_entries").select("*").eq("profile_id", profileId)
@@ -133,8 +133,8 @@ export function registerResources(server: McpServer): void {
     "episodes-highlights",
     "personaldb://episodes/highlights",
     { description: "重要エピソード集 (importance 7以上)" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const { data } = await getClient()
         .from("episodes")
         .select("*")
@@ -152,8 +152,8 @@ export function registerResources(server: McpServer): void {
     "goals-active",
     "personaldb://goals/active",
     { description: "アクティブな目標と進捗" },
-    async (uri) => {
-      const profileId = await getProfileId();
+    async (uri, extra) => {
+      const profileId = await getProfileId(extra.authInfo);
       const { data } = await getClient()
         .from("goals")
         .select("*")
@@ -170,8 +170,8 @@ export function registerResources(server: McpServer): void {
     "context",
     "personaldb://context",
     { description: "重み付きコンテキスト (デフォルトペルソナ)" },
-    async (uri) => {
-      const context = await generateContext();
+    async (uri, extra) => {
+      const context = await generateContext({ authInfo: extra.authInfo });
       return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: context }] };
     }
   );
