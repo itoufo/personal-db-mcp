@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getClient } from "../db/client.js";
 import { getProfileId } from "../utils/profile-resolver.js";
+import { generateContext } from "../context/generator.js";
 
 function text(content: string) {
   return { contents: [{ uri: "", mimeType: "application/json" as const, text: content }] };
@@ -161,6 +162,17 @@ export function registerResources(server: McpServer): void {
         .order("importance", { ascending: false });
 
       return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(data, null, 2) }] };
+    }
+  );
+
+  // Weighted context (default persona)
+  server.resource(
+    "context",
+    "personaldb://context",
+    { description: "重み付きコンテキスト (デフォルトペルソナ)" },
+    async (uri) => {
+      const context = await generateContext();
+      return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: context }] };
     }
   );
 }

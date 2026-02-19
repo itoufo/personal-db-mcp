@@ -47,7 +47,7 @@ export function registerSearchTools(server: McpServer): void {
         .array(z.enum(SEARCHABLE_TABLES))
         .optional()
         .describe("検索対象テーブル (省略時は全テーブル)"),
-      limit: z.number().int().min(1).max(50).optional().describe("テーブルあたりの取得件数 (デフォルト: 10)"),
+      limit: z.coerce.number().int().min(1).max(50).optional().describe("テーブルあたりの取得件数 (デフォルト: 10)"),
     },
     async ({ query, tables, limit = 10 }) => {
       try {

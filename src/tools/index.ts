@@ -5,6 +5,7 @@ import { registerTagTools } from "./tags.js";
 import { registerRelationTools } from "./relations.js";
 import { registerBulkTools } from "./bulk.js";
 import { registerStatsTools } from "./stats.js";
+import { registerContextTools } from "../context/index.js";
 import { schemaRegistry } from "../schemas/index.js";
 
 /** Entity configurations for CRUD factory */
@@ -24,10 +25,11 @@ const entityConfigs = [
   { table: "goals", label: "目標" },
   { table: "custom_categories", label: "カスタムカテゴリ" },
   { table: "custom_entries", label: "カスタムエントリ" },
+  { table: "personas", label: "ペルソナ" },
 ] as const;
 
 export function registerTools(server: McpServer): void {
-  // Register CRUD tools for each entity (5 tools × 15 entities = 75 tools)
+  // Register CRUD tools for each entity (5 tools × 16 entities = 80 tools)
   for (const config of entityConfigs) {
     const table = config.table as keyof typeof schemaRegistry;
     const schemas = schemaRegistry[table];
@@ -46,4 +48,5 @@ export function registerTools(server: McpServer): void {
   registerRelationTools(server);
   registerBulkTools(server);
   registerStatsTools(server);
+  registerContextTools(server);
 }

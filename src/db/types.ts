@@ -216,6 +216,22 @@ export interface EntryRelation {
   created_at: string;
 }
 
+export interface Persona extends CommonFields {
+  profile_id: string;
+  name: string;
+  description?: string;
+  system_instruction?: string;
+  tone?: string;
+  language?: string;
+  entity_weights?: Record<string, number>;
+  include_private?: boolean;
+  exclude_entities?: string[];
+  min_importance?: number;
+  min_confidence?: number;
+  time_decay_days?: number;
+  max_entries_per_type?: number;
+}
+
 /** Valid entry types for polymorphic references */
 export const ENTRY_TYPES = [
   "profiles",
@@ -232,6 +248,7 @@ export const ENTRY_TYPES = [
   "relationships",
   "goals",
   "custom_entries",
+  "personas",
 ] as const;
 
 export type EntryType = (typeof ENTRY_TYPES)[number];

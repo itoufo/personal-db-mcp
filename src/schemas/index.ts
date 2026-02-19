@@ -2,8 +2,8 @@ import { z } from "zod";
 
 // Common optional fields
 const commonOptional = {
-  importance: z.number().int().min(1).max(10).optional().describe("重要度 (1-10)"),
-  confidence: z.number().int().min(1).max(10).optional().describe("確信度 (1-10)"),
+  importance: z.coerce.number().int().min(1).max(10).optional().describe("重要度 (1-10)"),
+  confidence: z.coerce.number().int().min(1).max(10).optional().describe("確信度 (1-10)"),
   metadata: z.record(z.unknown()).optional().describe("カスタムメタデータ"),
 };
 
@@ -18,7 +18,7 @@ export const profileCreate = z.object({
   bio: z.string().optional().describe("自己紹介文"),
   personality_type: z.string().optional().describe("性格タイプ (例: ENTP/INTP)"),
   personality_traits: z.array(z.string()).optional().describe("性格特性"),
-  career_years: z.number().int().optional().describe("キャリア年数"),
+  career_years: z.coerce.number().int().optional().describe("キャリア年数"),
   urls: z.record(z.string()).optional().describe("URL集 (key-value)"),
   mission: z.string().optional().describe("ミッション"),
   vision: z.string().optional().describe("ビジョン"),
@@ -43,7 +43,7 @@ export const careerEntryCreate = z.object({
   domain: z.string().optional().describe("ドメイン (cybersecurity/software-development等)"),
   period_start: z.string().optional().describe("開始日 (YYYY-MM-DD)"),
   period_end: z.string().optional().describe("終了日 (YYYY-MM-DD, 現職ならnull)"),
-  period_year: z.number().int().optional().describe("単年度表記"),
+  period_year: z.coerce.number().int().optional().describe("単年度表記"),
   summary: z.string().optional().describe("概要"),
   insights: z.array(z.string()).optional().describe("得られた知見"),
   mention_tone: z.string().optional().describe("言及トーン (lesson/pride等)"),
@@ -57,8 +57,8 @@ export const careerEntryUpdate = careerEntryCreate.partial();
 export const skillCreate = z.object({
   name: z.string().describe("スキル名"),
   category: z.string().describe("カテゴリ (language/framework/ai_ml/security/infra/soft_skill)"),
-  proficiency: z.number().int().min(1).max(10).optional().describe("習熟度 (1-10)"),
-  years_experience: z.number().int().optional().describe("経験年数"),
+  proficiency: z.coerce.number().int().min(1).max(10).optional().describe("習熟度 (1-10)"),
+  years_experience: z.coerce.number().int().optional().describe("経験年数"),
   evidence: z.string().optional().describe("根拠・実績"),
   tags: z.array(z.string()).optional().describe("タグ"),
   ...commonOptional,
@@ -88,7 +88,7 @@ export const achievementCreate = z.object({
   name: z.string().describe("名称"),
   detail: z.string().optional().describe("詳細"),
   issuer: z.string().optional().describe("発行元"),
-  year: z.number().int().optional().describe("取得年"),
+  year: z.coerce.number().int().optional().describe("取得年"),
   url: z.string().optional().describe("URL"),
   tags: z.array(z.string()).optional().describe("タグ"),
   ...commonOptional,
@@ -132,7 +132,7 @@ export const educationUpdate = educationCreate.partial();
 // ---- Hobbies ----
 export const hobbyCreate = z.object({
   name: z.string().describe("趣味名"),
-  passion_level: z.number().int().min(1).max(10).optional().describe("情熱度 (1-10)"),
+  passion_level: z.coerce.number().int().min(1).max(10).optional().describe("情熱度 (1-10)"),
   description: z.string().optional().describe("説明"),
   related_skills: z.array(z.string()).optional().describe("関連スキル"),
   tags: z.array(z.string()).optional().describe("タグ"),
@@ -193,7 +193,7 @@ export const goalCreate = z.object({
   title: z.string().describe("タイトル"),
   description: z.string().optional().describe("説明"),
   status: z.string().optional().describe("ステータス (active/completed/paused/abandoned)"),
-  progress: z.number().int().min(0).max(100).optional().describe("進捗 (0-100)"),
+  progress: z.coerce.number().int().min(0).max(100).optional().describe("進捗 (0-100)"),
   target_date: z.string().optional().describe("目標日 (YYYY-MM-DD)"),
   milestones: z.array(z.record(z.unknown())).optional().describe("マイルストーン [{title, done, date}]"),
   tags: z.array(z.string()).optional().describe("タグ"),
@@ -219,6 +219,24 @@ export const customEntryCreate = z.object({
 });
 export const customEntryUpdate = customEntryCreate.partial();
 
+// ---- Personas ----
+export const personaCreate = z.object({
+  name: z.string().describe("ペルソナ名 (例: professional, interview)"),
+  description: z.string().optional().describe("説明"),
+  system_instruction: z.string().optional().describe("AIへの指示"),
+  tone: z.string().optional().describe("トーン (formal/casual/confident/expressive)"),
+  language: z.string().optional().describe("言語 (auto/ja/en)"),
+  entity_weights: z.record(z.coerce.number()).optional().describe("エンティティ重み付け (例: {skills: 2.0, hobbies: 0})"),
+  include_private: z.boolean().optional().describe("非公開データを含めるか"),
+  exclude_entities: z.array(z.string()).optional().describe("除外するエンティティタイプ"),
+  min_importance: z.coerce.number().int().min(1).max(10).optional().describe("最低重要度フィルタ"),
+  min_confidence: z.coerce.number().int().min(1).max(10).optional().describe("最低確信度フィルタ"),
+  time_decay_days: z.coerce.number().int().optional().describe("半減期（日数）"),
+  max_entries_per_type: z.coerce.number().int().optional().describe("タイプ別最大エントリ数"),
+  ...commonOptional,
+});
+export const personaUpdate = personaCreate.partial();
+
 /** Schema registry: maps entity name to create/update schemas */
 export const schemaRegistry = {
   profiles: { create: profileCreate, update: profileUpdate },
@@ -236,6 +254,7 @@ export const schemaRegistry = {
   goals: { create: goalCreate, update: goalUpdate },
   custom_categories: { create: customCategoryCreate, update: customCategoryUpdate },
   custom_entries: { create: customEntryCreate, update: customEntryUpdate },
+  personas: { create: personaCreate, update: personaUpdate },
 } as const;
 
 export type EntityName = keyof typeof schemaRegistry;

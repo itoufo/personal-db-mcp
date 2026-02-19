@@ -96,8 +96,8 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
     `list_${table}`,
     `${label}一覧を取得`,
     {
-      limit: z.number().int().min(1).max(100).optional().describe("取得件数 (デフォルト: 50)"),
-      offset: z.number().int().min(0).optional().describe("オフセット"),
+      limit: z.coerce.number().int().min(1).max(100).optional().describe("取得件数 (デフォルト: 50)"),
+      offset: z.coerce.number().int().min(0).optional().describe("オフセット"),
       order_by: z.string().optional().describe(`ソートカラム (デフォルト: ${orderBy})`),
       order_desc: z.boolean().optional().describe("降順ソート (デフォルト: true)"),
       filter: z.record(z.string()).optional().describe("フィルタ条件 (カラム名: 値)"),
