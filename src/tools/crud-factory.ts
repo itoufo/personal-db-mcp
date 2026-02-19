@@ -47,6 +47,9 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
     { data: createSchema },
     async ({ data }, extra) => {
       try {
+        console.log(`[crud-factory:create_${singular}] extra keys:`, Object.keys(extra));
+        console.log(`[crud-factory:create_${singular}] authInfo:`, JSON.stringify(extra.authInfo));
+        console.log(`[crud-factory:create_${singular}] authInfo?.extra:`, JSON.stringify((extra.authInfo as any)?.extra));
         const insertData: Record<string, unknown> = { ...data };
         if (hasProfileId) {
           insertData.profile_id = await getProfileId(extra.authInfo);
