@@ -113,7 +113,7 @@ export function scoreEntries(
 }
 
 /** Check if an entry matches the focus keyword (case-insensitive) */
-function matchesFocus(
+export function matchesFocus(
   entry: Record<string, unknown>,
   keyword: string
 ): boolean {

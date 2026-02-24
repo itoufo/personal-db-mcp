@@ -4,6 +4,8 @@ import { registerSearchTools } from "./search.js";
 import { registerTagTools } from "./tags.js";
 import { registerRelationTools } from "./relations.js";
 import { registerBulkTools } from "./bulk.js";
+import { registerBatchTools } from "./batch.js";
+import { registerAnalyzeTools } from "./analyze.js";
 import { registerStatsTools } from "./stats.js";
 import { registerContextTools } from "../context/index.js";
 import { schemaRegistry } from "../schemas/index.js";
@@ -49,6 +51,8 @@ export function registerTools(server: McpServer): void {
   registerTagTools(server);
   registerRelationTools(server);
   registerBulkTools(server);
+  registerBatchTools(server);
+  registerAnalyzeTools(server);
   registerStatsTools(server);
   registerContextTools(server);
 
