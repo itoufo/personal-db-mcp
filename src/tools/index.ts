@@ -8,6 +8,7 @@ import { registerBatchTools } from "./batch.js";
 import { registerAnalyzeTools } from "./analyze.js";
 import { registerStatsTools } from "./stats.js";
 import { registerContextTools } from "../context/index.js";
+import { registerNftTools } from "./nft.js";
 import { schemaRegistry } from "../schemas/index.js";
 import { getProfileId } from "../utils/profile-resolver.js";
 import { getRequestAuth } from "../auth/request-context.js";
@@ -55,6 +56,7 @@ export function registerTools(server: McpServer): void {
   registerAnalyzeTools(server);
   registerStatsTools(server);
   registerContextTools(server);
+  registerNftTools(server);
 
   // DEBUG: auth diagnostic tool
   server.tool(
