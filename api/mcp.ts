@@ -6,6 +6,8 @@ import { registerPrompts } from "../src/prompts/index.js";
 import { validateApiKey } from "../src/auth/api-key.js";
 import { withRequestAuth } from "../src/auth/request-context.js";
 
+const PROFILE_HEADER = "x-personal-db-profile-id";
+
 const handler = createMcpHandler(
   (server) => {
     registerTools(server);
@@ -25,12 +27,13 @@ const handler = createMcpHandler(
 );
 
 const verifyToken = async (
-  _req: Request,
+  req: Request,
   bearerToken?: string,
 ): Promise<AuthInfo | undefined> => {
   if (!bearerToken) return undefined;
 
   const user = await validateApiKey(bearerToken);
+  const headerProfileId = req.headers.get(PROFILE_HEADER) ?? undefined;
 
   return {
     token: bearerToken,
@@ -38,6 +41,9 @@ const verifyToken = async (
     scopes: [user.plan],
     extra: {
       profileId: user.profileId,
+      headerProfileId,
+      allProfileIds: user.allProfileIds,
+      accountScoped: user.accountScoped,
       plan: user.plan,
     },
   };
@@ -53,8 +59,15 @@ async function handleRequest(req: Request): Promise<Response> {
 
   if (bearerToken) {
     const user = await validateApiKey(bearerToken);
+    const headerProfileId = req.headers.get(PROFILE_HEADER) ?? undefined;
     return withRequestAuth(
-      { profileId: user.profileId, plan: user.plan },
+      {
+        profileId: user.profileId,
+        headerProfileId,
+        allProfileIds: user.allProfileIds,
+        accountScoped: user.accountScoped,
+        plan: user.plan,
+      },
       () => authedHandler(req),
     );
   }

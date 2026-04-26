@@ -5,12 +5,14 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 let cachedProfileId: string | null = null;
 let cachedPlan: string | null = null;
+let cachedAllProfileIds: string[] = [];
+let cachedAccountScoped = false;
 let initialized = false;
 
 /**
  * Initialize profile resolution.
- * If PERSONAL_DB_API_KEY is set, validates it and caches the profile_id.
- * Otherwise falls back to single-profile mode (backward compatible).
+ * If PERSONAL_DB_API_KEY is set, validates it and caches the bound profile_id
+ * (or marks account-scoped). Otherwise falls back to single-profile mode.
  */
 async function ensureInitialized(): Promise<void> {
   if (initialized) return;
@@ -18,8 +20,10 @@ async function ensureInitialized(): Promise<void> {
   const apiKey = process.env.PERSONAL_DB_API_KEY;
   if (apiKey) {
     const user = await validateApiKey(apiKey);
-    cachedProfileId = user.profileId;
+    cachedProfileId = user.profileId ?? null;
     cachedPlan = user.plan;
+    cachedAllProfileIds = user.allProfileIds;
+    cachedAccountScoped = user.accountScoped;
     initialized = true;
     return;
   }
@@ -36,61 +40,154 @@ async function ensureInitialized(): Promise<void> {
   }
 
   cachedProfileId = data.id as string;
-  cachedPlan = "pro"; // legacy mode = unlimited
+  cachedPlan = "pro";
+  cachedAllProfileIds = [data.id as string];
+  cachedAccountScoped = false;
   initialized = true;
 }
 
-/**
- * Extract profile auth from MCP SDK's authInfo (extra parameter in tool handlers).
- * authInfo.extra contains { profileId, plan } set by verifyToken in api/mcp.ts.
- */
-function fromAuthInfo(authInfo?: AuthInfo): { profileId: string; plan: string } | undefined {
+interface AuthExtras {
+  profileId?: string;
+  headerProfileId?: string;
+  allProfileIds?: string[];
+  accountScoped?: boolean;
+  plan?: string;
+}
+
+function fromAuthInfo(authInfo?: AuthInfo): AuthExtras | undefined {
   const extra = authInfo?.extra as Record<string, unknown> | undefined;
-  if (extra?.profileId && typeof extra.profileId === "string") {
+  if (!extra) return undefined;
+  return {
+    profileId:
+      typeof extra.profileId === "string" ? extra.profileId : undefined,
+    headerProfileId:
+      typeof extra.headerProfileId === "string" ? extra.headerProfileId : undefined,
+    allProfileIds: Array.isArray(extra.allProfileIds)
+      ? (extra.allProfileIds as string[])
+      : undefined,
+    accountScoped:
+      typeof extra.accountScoped === "boolean" ? extra.accountScoped : undefined,
+    plan: typeof extra.plan === "string" ? extra.plan : undefined,
+  };
+}
+
+function activeContext(authInfo?: AuthInfo): AuthExtras {
+  const fromAuth = fromAuthInfo(authInfo);
+  if (fromAuth) return fromAuth;
+
+  const reqAuth = getRequestAuth();
+  if (reqAuth) {
     return {
-      profileId: extra.profileId,
-      plan: (extra.plan as string) ?? "free",
+      profileId: reqAuth.profileId,
+      headerProfileId: reqAuth.headerProfileId,
+      allProfileIds: reqAuth.allProfileIds,
+      accountScoped: reqAuth.accountScoped,
+      plan: reqAuth.plan,
     };
   }
-  return undefined;
+
+  return {
+    profileId: cachedProfileId ?? undefined,
+    headerProfileId: undefined,
+    allProfileIds: cachedAllProfileIds,
+    accountScoped: cachedAccountScoped,
+    plan: cachedPlan ?? "free",
+  };
 }
 
 /**
- * Resolve the profile ID for the current session.
- * Priority: authInfo (MCP SDK) > AsyncLocalStorage > env var > first profile
+ * Resolve the profile ID for the current operation.
+ *
+ * Priority:
+ *   1. explicit override (per-tool-call profile_id argument)
+ *   2. bound profile (profile-scoped key)
+ *   3. header profile id (X-Personal-DB-Profile-Id, account-scoped key)
+ *   4. cached default (CLI / env mode)
+ *
+ * For account-scoped keys, an override or header is REQUIRED unless the
+ * tool can fall back to "all profiles".
+ *
+ * Throws when no profile can be resolved or when the override is not owned.
  */
-export async function getProfileId(authInfo?: AuthInfo): Promise<string> {
-  // 1. MCP SDK's authInfo (most reliable for HTTP mode)
-  const fromAuth = fromAuthInfo(authInfo);
-  if (fromAuth) return fromAuth.profileId;
+export async function getProfileId(
+  authInfo?: AuthInfo,
+  override?: string,
+): Promise<string> {
+  // CLI/env init must run before we look at the cache fallback.
+  if (!getRequestAuth() && !fromAuthInfo(authInfo)) {
+    await ensureInitialized();
+  }
 
-  // 2. AsyncLocalStorage (set by withRequestAuth in api/mcp.ts)
-  const reqAuth = getRequestAuth();
-  if (reqAuth) return reqAuth.profileId;
+  const ctx = activeContext(authInfo);
 
-  // 3. Env var or legacy fallback (CLI mode)
-  await ensureInitialized();
-  return cachedProfileId!;
+  if (override) {
+    if (
+      ctx.allProfileIds &&
+      ctx.allProfileIds.length > 0 &&
+      !ctx.allProfileIds.includes(override)
+    ) {
+      throw new Error(
+        `profile_id "${override}" is not owned by the authenticated user.`,
+      );
+    }
+    return override;
+  }
+
+  if (ctx.profileId) return ctx.profileId;
+
+  if (ctx.headerProfileId) {
+    if (
+      ctx.allProfileIds &&
+      ctx.allProfileIds.length > 0 &&
+      !ctx.allProfileIds.includes(ctx.headerProfileId)
+    ) {
+      throw new Error(
+        `Header profile_id "${ctx.headerProfileId}" is not owned by the authenticated user.`,
+      );
+    }
+    return ctx.headerProfileId;
+  }
+
+  if (ctx.accountScoped) {
+    throw new Error(
+      "This API key is account-scoped. Specify profile_id per tool call or send X-Personal-DB-Profile-Id header. Use list_profiles to see available profiles.",
+    );
+  }
+
+  throw new Error("No profile resolved. Create a profile first.");
 }
 
-/**
- * Get the current user's plan.
- * Priority: authInfo (MCP SDK) > AsyncLocalStorage > env var > legacy
- */
+/** Get the current user's plan. */
 export async function getPlan(authInfo?: AuthInfo): Promise<string> {
-  const fromAuth = fromAuthInfo(authInfo);
-  if (fromAuth) return fromAuth.plan;
-
-  const reqAuth = getRequestAuth();
-  if (reqAuth) return reqAuth.plan;
-
-  await ensureInitialized();
-  return cachedPlan!;
+  if (!getRequestAuth() && !fromAuthInfo(authInfo)) {
+    await ensureInitialized();
+  }
+  const ctx = activeContext(authInfo);
+  return ctx.plan ?? "free";
 }
 
-/** Clear cached profile ID (used after profile creation) */
+/** All profiles owned by the authenticated user (used by list_profiles fallback). */
+export async function getAllProfileIds(
+  authInfo?: AuthInfo,
+): Promise<string[]> {
+  if (!getRequestAuth() && !fromAuthInfo(authInfo)) {
+    await ensureInitialized();
+  }
+  const ctx = activeContext(authInfo);
+  return ctx.allProfileIds ?? [];
+}
+
+/** True when the current key is account-scoped (no bound profile). */
+export function isAccountScoped(authInfo?: AuthInfo): boolean {
+  const ctx = activeContext(authInfo);
+  return Boolean(ctx.accountScoped);
+}
+
+/** Clear cached profile ID (used after profile creation in CLI mode). */
 export function clearProfileCache(): void {
   cachedProfileId = null;
   cachedPlan = null;
+  cachedAllProfileIds = [];
+  cachedAccountScoped = false;
   initialized = false;
 }

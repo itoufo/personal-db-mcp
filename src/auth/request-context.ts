@@ -1,7 +1,14 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export interface RequestAuth {
-  profileId: string;
+  /** Bound profile id (profile-scoped key) or undefined (account-scoped). */
+  profileId?: string;
+  /** Profile id from request header (X-Personal-DB-Profile-Id), if provided. */
+  headerProfileId?: string;
+  /** All profile IDs owned by the user. */
+  allProfileIds: string[];
+  /** True when the key is account-scoped. */
+  accountScoped: boolean;
   plan: string;
 }
 

@@ -1,7 +1,11 @@
 import { z, ZodObject, ZodRawShape } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getClient } from "../db/client.js";
-import { getProfileId, clearProfileCache } from "../utils/profile-resolver.js";
+import {
+  getProfileId,
+  getAllProfileIds,
+  clearProfileCache,
+} from "../utils/profile-resolver.js";
 import { formatSuccess, formatErrorResponse, formatError } from "../utils/errors.js";
 
 interface CrudConfig {
@@ -44,12 +48,21 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
   server.tool(
     `create_${singular}`,
     `${label}を新規作成`,
-    { data: createSchema },
-    async ({ data }, extra) => {
+    {
+      data: createSchema,
+      profile_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "対象プロフィール (account-scoped APIキーの場合は必須)。未指定で profile-scoped キーは bind 先プロフィールを使用。",
+        ),
+    },
+    async ({ data, profile_id }, extra) => {
       try {
         const insertData: Record<string, unknown> = { ...data };
         if (hasProfileId) {
-          insertData.profile_id = await getProfileId(extra.authInfo);
+          insertData.profile_id = await getProfileId(extra.authInfo, profile_id);
         }
 
         const { data: result, error } = await getClient()
@@ -101,8 +114,18 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
       order_by: z.string().optional().describe(`ソートカラム (デフォルト: ${orderBy})`),
       order_desc: z.boolean().optional().describe("降順ソート (デフォルト: true)"),
       filter: z.record(z.string()).optional().describe("フィルタ条件 (カラム名: 値)"),
+      profile_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "対象プロフィール (account-scoped APIキーの場合は必須)。未指定で profile-scoped キーは bind 先プロフィールを使用。",
+        ),
     },
-    async ({ limit = 50, offset = 0, order_by, order_desc = true, filter }, extra) => {
+    async (
+      { limit = 50, offset = 0, order_by, order_desc = true, filter, profile_id },
+      extra,
+    ) => {
       try {
         let query = getClient()
           .from(table)
@@ -112,8 +135,16 @@ export function registerCrudTools(server: McpServer, config: CrudConfig): void {
 
         // Auto-filter by profile_id
         if (hasProfileId) {
-          const profileId = await getProfileId(extra.authInfo);
+          const profileId = await getProfileId(extra.authInfo, profile_id);
           query = query.eq("profile_id", profileId);
+        } else if (table === "profiles") {
+          // The profiles table itself: scope to user-owned profiles to
+          // prevent cross-tenant leakage under service_role.
+          const ids = await getAllProfileIds(extra.authInfo);
+          if (ids.length === 0) {
+            return formatSuccess({ data: [], total: 0, limit, offset });
+          }
+          query = query.in("id", ids);
         }
 
         // Apply custom filters
